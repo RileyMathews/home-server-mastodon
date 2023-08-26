@@ -1,0 +1,45 @@
+version: "3.8"
+
+networks:
+  database:
+    name: shared_postgresql_network
+    external: true
+  redis:
+    name: shared_redis_network
+    external: true
+
+services:
+  mastodon:
+    image: lscr.io/linuxserver/mastodon:latest
+    container_name: mastodon
+    networks:
+      - database
+      - redis
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+      - LOCAL_DOMAIN=mastodon.rileymathews.com
+      - REDIS_HOST=shared_redis
+      - REDIS_PORT=6379
+      - DB_HOST=shared_postgresql
+      - DB_USER=mastodon
+      - DB_NAME=mastodon
+      - DB_PORT=5432
+      - ES_ENABLED=false
+      - SMTP_SERVER=smtp.sendgrid.net
+      - SMTP_PORT=587
+      - SMTP_LOGIN=apikey
+      - SMTP_FROM_ADDRESS=dev+mastodon@rileymathews.com
+      - S3_ENABLED=false
+    env_file:
+      - .env.secret
+    volumes:
+      - /mnt/md0/volumes/mastodon/config:/config
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.mastodon.rule=Host(`mastodon.rileymathews.com`)
+      - traefik.http.routers.mastodon.tls.certresolver=le
+      - traefik.http.services.mastodon-mastodon.loadbalancer.server.port=443
+      - traefik.http.services.mastodon-mastodon.loadbalancer.server.scheme=https
